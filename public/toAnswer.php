@@ -407,6 +407,7 @@ elseif ($action === 'apercu')
 }
 elseif ($action === 'answer')
 {
+
 	print '<form name="answerQuestionnaire" method="POST" action="'.$_SERVER['PHP_SELF'].'?id='.$id.'">';
 	print '<input type="HIDDEN" name="fk_invitation" value="'.$fk_invitation.'"/>';
 	print '<input type="HIDDEN" name="token" value="'.$token.'"/>';
@@ -419,6 +420,48 @@ elseif ($action === 'answer')
 	draw_pagination($page, $object);
 	if (!empty($object->questions))
 	{
+		if (is_array($object->linkedObjects) && array_key_exists('agefodd_agsession', $object->linkedObjects) && count($object->linkedObjects['agefodd_agsession'])>0) {
+			dol_include_once('/agefodd/class/agsession.class.php');
+			dol_include_once('/agefodd/class/agefodd_session_formateur.class.php');
+
+			$session = reset($object->linkedObjects['agefodd_agsession']);
+			$out_session = '<div class="element" type="info" id="info">';
+
+			$out_session .= '<div class="refid">Ref. Session</div>';
+			$out_session .= '<div class="element" type="question">';
+			$out_session .= $session->ref;
+			$out_session .= '</div>';
+
+			$out_session .= '<div class="refid">Date Session</div>';
+			$out_session .= '<div class="element" type="question">';
+			$out_session .= $session->libSessionDate();
+			$out_session .= '</div>';
+
+			//find trainer info
+			if ($invitation_user->type_element=='agefodd_formateur') {
+				$trainer = new Agefodd_session_formateur($db);
+				$resultTrainer = $trainer->fetch($invitation_user->fk_element);
+				if ($resultTrainer<0) {
+					setEventMessage($trainer->error,'errors');
+				} else {
+					$out_session .= '<div class="refid">Formateur</div>';
+					$out_session .= '<div class="element" type="question">';
+					$out_session .= $trainer->lastname. ' '. $trainer->firstname;
+					$out_session .= '</div>';
+				}
+			}
+
+			$out_session .= '<div class="refid">Formation</div>';
+			$out_session .= '<div class="element" type="question">';
+			$out_session .= (empty($session->intitule_custo)?$session->formintitule:$session->intitule_custo);
+			$out_session .= '</div>';
+
+			$out_session .= '</div>';
+			$out_session .= '<br>';
+			$out_session .= '<br>';
+			print $out_session;
+		}
+
 		foreach ($object->questions as &$q)
 		{
 			if (empty($q->answers))

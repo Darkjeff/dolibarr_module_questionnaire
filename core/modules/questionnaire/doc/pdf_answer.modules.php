@@ -146,7 +146,12 @@ class pdf_answer extends ModelePDFProduct
 		$outputlangs->load("orders");
 		$outputlangs->load("deliveries");
 
-		$nblignes = count($object->lines);
+		if (!empty($object->lines)) {
+			$nblignes = count($object->lines);
+		} else {
+			$nblignes = 0;
+		}
+
 
 		if ($conf->produit->dir_output)
 		{
@@ -247,6 +252,55 @@ class pdf_answer extends ModelePDFProduct
 
 				if (!empty($questionnaire->questions))
 				{
+					if (is_array($questionnaire->linkedObjects) && array_key_exists('agefodd_agsession', $questionnaire->linkedObjects) && count($questionnaire->linkedObjects['agefodd_agsession'])>0) {
+						dol_include_once('/agefodd/class/agsession.class.php');
+						dol_include_once('/agefodd/class/agefodd_session_formateur.class.php');
+
+						$session = reset($questionnaire->linkedObjects['agefodd_agsession']);
+
+						$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+						$pdf->SetFont('', 'B', $default_font_size);
+						$pdf->MultiCell($this->page_largeur - ($this->marge_droite + $this->marge_gauche), 3, 'Ref. Session', 0, 'L', 0);
+						$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+						$pdf->SetFont('', '', $default_font_size);
+						$pdf->MultiCell($this->page_largeur - ($this->marge_droite + $this->marge_gauche), 3, $session->ref, 0, 'L', 0);
+						$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+
+						$pdf->SetFont('', 'B', $default_font_size);
+						$pdf->MultiCell($this->page_largeur - ($this->marge_droite + $this->marge_gauche), 3, 'Date Session', 0, 'L', 0);
+						$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+						$pdf->SetFont('', '', $default_font_size);
+						$pdf->MultiCell($this->page_largeur - ($this->marge_droite + $this->marge_gauche), 3, $session->libSessionDate(), 0, 'L', 0);
+						$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+
+						//find trainer info
+						if ($object->type_element=='agefodd_formateur') {
+							$trainer = new Agefodd_session_formateur($db);
+							$resultTrainer = $trainer->fetch($object->fk_element);
+							if ($resultTrainer<0) {
+								setEventMessage($trainer->error,'errors');
+							} else {
+								$pdf->SetFont('', 'B', $default_font_size);
+								$pdf->MultiCell($this->page_largeur - ($this->marge_droite + $this->marge_gauche), 3, 'Formateur', 0, 'L', 0);
+								$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+								$pdf->SetFont('', '', $default_font_size);
+								$pdf->MultiCell($this->page_largeur - ($this->marge_droite + $this->marge_gauche), 3, $trainer->lastname. ' '. $trainer->firstname, 0, 'L', 0);
+								$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+							}
+						}
+
+						$pdf->SetFont('', 'B', $default_font_size);
+						$pdf->MultiCell($this->page_largeur - ($this->marge_droite + $this->marge_gauche), 3, 'Formation', 0, 'L', 0);
+						$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+						$pdf->SetFont('', '', $default_font_size);
+						$pdf->MultiCell($this->page_largeur - ($this->marge_droite + $this->marge_gauche), 3, (empty($session->intitule_custo)?$session->formintitule:$session->intitule_custo), 0, 'L', 0);
+						$pdf->SetXY($this->marge_gauche, $pdf->GetY());
+
+						$nexY = $pdf->GetY() + 3;
+						$pdf->SetXY($this->marge_gauche, $nexY);
+
+					}
+
 					for ($i = 0; $i < count($questionnaire->questions); $i++)
 					{
 						$curY = $nexY;
@@ -255,50 +309,7 @@ class pdf_answer extends ModelePDFProduct
 
 						$pdf->setTopMargin($tab_top_newpage);
 						$pdf->setPageOrientation('', 1, $heightforfooter + $heightforfreetext + $heightforinfotot); // The only function to edit the bottom margin of current page to set it.
-						//	$showpricebeforepagebreak = 1;
-//
-//						$pdf->startTransaction();
-//						$pageposafter = $pdf->getPage();
-//						if ($pageposafter > $pageposbefore) // There is a pagebreak
-//						{
-//							$pdf->rollbackTransaction(true);
-//							$pageposafter = $pageposbefore;
-//							//print $pageposafter.'-'.$pageposbefore;exit;
-//							$pdf->setPageOrientation('', 1, $heightforfooter); // The only function to edit the bottom margin of current page to set it.
-//							$pageposafter = $pdf->getPage();
-//							$posyafter = $pdf->GetY();
-//							if ($posyafter > ($this->page_hauteur - ($heightforfooter + $heightforfreetext + $heightforinfotot))) // There is no space left for total+free text
-//							{
-//								if ($i == ($nblignes - 1)) // No more lines, and no space left to show total, so we create a new page
-//								{
-//									$pdf->AddPage('', '', true);
-//									if (!empty($tplidx))
-//										$pdf->useTemplate($tplidx);
-//									if (empty($conf->global->MAIN_PDF_DONOTREPEAT_HEAD))
-//										$this->_pagehead($pdf, $object, 0, $outputlangs);
-//									$pdf->setPage($pageposafter + 1);
-//								}
-//							}
-//							else
-//							{
-//								// We found a page break
-//								$showpricebeforepagebreak = 0;
-//							}
-//						}
-//						else // No pagebreak
-//						{
-//							$pdf->commitTransaction();
-//						}
-						//$nexY = $pdf->GetY();
 
-						$pageposafter = $pdf->getPage();
-						//	var_dump($pageposbefore,$pageposafter,$nexY,$curY);
-						/* 	if($pageposafter>$pageposbefore){
-						  $curY =$nexY = $tab_top_newpage;
-						  $pdf->setPage($pageposafter);
-						  }else{
-						  $pdf->setPage($pageposbefore);
-						  } */
 						$pdf->setTopMargin($this->marge_haute);
 
 						$pdf->setPageOrientation('', 1, 0); // The only function to edit the bottom margin of current page to set it.
@@ -330,7 +341,7 @@ class pdf_answer extends ModelePDFProduct
 							if (empty($questionnaire->questions[$i]->answers))
 								$questionnaire->questions[$i]->loadAnswers($object->id);
 
-						
+
 							if ($questionnaire->questions[$i]->type == 'title')
 							{
 								$pdf->SetFont('', 'B', 15);

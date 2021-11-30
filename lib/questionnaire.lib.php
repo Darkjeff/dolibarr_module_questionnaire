@@ -1150,6 +1150,26 @@ function _getBanner(&$object, $action, $print_link_apercu = true, $shownav = tru
 		$morehtmlref = '<div class="refidno">'.$langs->trans('questionnaire').' : '.$questionnaire->getNomUrl().'</div>';
 		$morehtmlref .= '<div class="refidno">'.$langs->trans('Recipient').' : '._getGlobalNomUrl($object->fk_element,'Externe',$object->type_element).'</div>';
 
+		if ($object->type_element=='agefodd_formateur') {
+			dol_include_once('/agefodd/class/agsession.class.php');
+			dol_include_once('/agefodd/class/agefodd_session_formateur.class.php');
+			$trainer = new Agefodd_session_formateur($db);
+			$resultTrainer = $trainer->fetch($object->fk_element);
+			if ($resultTrainer<0) {
+				setEventMessage($trainer->error,'errors');
+			} else {
+				$session=new Agsession($db);
+				$resultSession = $session->fetch($trainer->sessid);
+				if ($resultSession<0) {
+					setEventMessage($session->error,'errors');
+				} else {
+					$morehtmlref .= '<div class="refidno">'.$langs->trans('Session').' : '.$session->getNomUrl(1).'</div>';
+				}
+
+			}
+		}
+
+
 	}
 
 	//$morehtmlref.= '<div class="refidno">'.getFieldVal($object, 'LinkedObject', 'origin').'</div>';
@@ -1395,7 +1415,7 @@ function _getLibStatus($fk_questionnaire, $fk_statut)
 	return '';
 }
 
-function prepareMailContent($invuser, $fk_questionnaire)
+function prepareMailContent($invuser, $fk_questionnaire, $render='ASCII')
 {
 	global $db, $langs, $conf;
 	dol_include_once('/contact/class/contact.class.php');
@@ -1409,18 +1429,26 @@ function prepareMailContent($invuser, $fk_questionnaire)
 		$name = '';
 	}
 
-	$content = "Bonjour $name, \nNous vous invitons à répondre au questionnaire suivant : ";
 
+	$content = "Bonjour $name, \nNous vous invitons à répondre au questionnaire suivant : ";
+	if ($render=='HTML') {
+		$content .= '</BR>';
+		$content .= '<a href="';
+	}
+	$link = '';
 	if(!empty($conf->global->QUESTIONNAIRE_CUSTOM_DOMAIN))
-        $content .= $conf->global->QUESTIONNAIRE_CUSTOM_DOMAIN.'toAnswer.php?id=' . $fk_questionnaire . '&action=answer&fk_invitation=' . $invuser->id . '&token=' . $invuser->token;
+        $link .= $conf->global->QUESTIONNAIRE_CUSTOM_DOMAIN.'toAnswer.php?id=' . $fk_questionnaire . '&action=answer&fk_invitation=' . $invuser->id . '&token=' . $invuser->token;
     else
-        $content .= dol_buildpath('/questionnaire/public/toAnswer.php?id=' . $fk_questionnaire . '&action=answer&fk_invitation=' . $invuser->id . '&token=' . $invuser->token, 2);
+		$link .= dol_buildpath('/questionnaire/public/toAnswer.php?id=' . $fk_questionnaire . '&action=answer&fk_invitation=' . $invuser->id . '&token=' . $invuser->token, 2);
+
+	if ($render=='HTML') {
+		$content .= $link.'">'.$link.'</a>';
+		$content .= '</BR>';
+	} else {
+		$content .= $link;
+	}
 
     $content .= " \nVous avez jusqu'au ".date('d/m/Y', $invuser->date_limite_reponse).' pour y répondre.';
-
-
-
-
 
 	return $content;
 }
